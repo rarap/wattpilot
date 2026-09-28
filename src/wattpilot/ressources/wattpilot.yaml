@@ -209,7 +209,7 @@ properties:
     description: OCPP auto authorization
     jsonType: boolean
     rw: R
-  - key: cc4rv:
+  - key: cc4rv
     title: CC4 RV
     description: Hardware/Firmware controller value
     jsonType: integer
