@@ -204,6 +204,16 @@ messages:
 # - https://github.com/syssi/homeassistant-goecharger-mqtt
 # - https://www.fronius.com/~/downloads/Solar%20Energy/Operating%20Instructions/42%2C0426%2C0400%2CEN.pdf
 properties:
+  - key: ocppaa
+    title: OCPP Auto Authorization
+    description: OCPP auto authorization
+    jsonType: boolean
+    rw: R
+  - key: cc4rv:
+    title: CC4 RV
+    description: Hardware/Firmware controller value
+    jsonType: integer
+    rw: R
   - key: avgfhz
     title: Average Grid Frequency
     description: Average grid frequency in Hertz
