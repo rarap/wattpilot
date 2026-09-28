@@ -3,4 +3,4 @@ PyYAML>=5.4.1
 pyreadline
 paho-mqtt<2.0.0
 cmd2>=2.4.1
-bcrypt>=5.0.0
+bcrypt
