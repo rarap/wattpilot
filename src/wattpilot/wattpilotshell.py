@@ -759,29 +759,28 @@ def mqtt_get_decoded_property(pd, value):
     return mqtt_get_remapped_property(pd, decoded_value)
 
 
-def mqtt_publish_property(wp, mqtt_client, pd, value, force_publish=False):
-    prop_name = pd["key"]
-    if not (force_publish or not Cfg.MQTT_PROPERTIES.val or prop_name in Cfg.MQTT_PROPERTIES.val):
-        _LOGGER.debug(f"Skipping publishing of property '{prop_name}' ...")
+def mqtt_publish_property(wp, prop_name, prop_value):
+    global mqtt_client
+    global wpdef
+    if mqtt_client is None:
         return
-    property_topic = mqtt_subst_topic(Cfg.MQTT_TOPIC_PROPERTY_STATE.val, {
-        "baseTopic": Cfg.MQTT_TOPIC_BASE.val,
-        "serialNumber": wp.serial,
-        "propName": prop_name,
+
+    # Payload formatieren / absichern:
+    payload = prop_value
+    if pd := wpdef.get("properties", {}).get(prop_name):
+        payload = mqtt_get_mapped_property(pd, prop_value)
+
+    # Falls der Wert eine Liste, Dictionary, bool oder komplexes Objekt ist:
+    if not isinstance(payload, (str, bytearray, bytes, int, float)) and payload is not None:
+        payload = json.dumps(payload, cls=JSONNamespaceEncoder)
+    elif isinstance(payload, bool):
+        payload = "true" if payload else "false"
+
+    state_topic = mqtt_subst_topic(Cfg.MQTT_TOPIC_PROPERTY_STATE.val, {
+        "propName": prop_name
     })
-    encoded_value = mqtt_get_encoded_property(pd, value)
-    _LOGGER.debug(
-        f"Publishing property '{prop_name}' with value '{encoded_value}' to MQTT ...")
-    mqtt_client.publish(property_topic, encoded_value, retain=True)
-    if Cfg.WATTPILOT_SPLIT_PROPERTIES.val and "childProps" in pd:
-        _LOGGER.debug(
-            f"Splitting child props of property {prop_name} as {pd['jsonType']} for value {value} ...")
-        for cpd in pd["childProps"]:
-            _LOGGER.debug(f"Extracting child property {cpd['key']},  ...")
-            split_value = wp_get_child_prop_value(cpd['key'])
-            _LOGGER.debug(
-                f"Publishing sub-property {cpd['key']} with value {split_value} to MQTT ...")
-            mqtt_publish_property(wp, mqtt_client, cpd, split_value, True)
+
+    mqtt_client.publish(state_topic, payload=payload, qos=0, retain=True)
 
 
 def mqtt_publish_message(event, message):
@@ -795,15 +794,17 @@ def mqtt_publish_message(event, message):
     msg_dict = json.loads(message)
     if Cfg.MQTT_PUBLISH_MESSAGES.val and (not Cfg.MQTT_MESSAGES.val or msg_dict["type"] in Cfg.MQTT_MESSAGES.val):
         message_topic = mqtt_subst_topic(Cfg.MQTT_TOPIC_MESSAGES.val, {
-            "baseTopic": Cfg.MQTT_TOPIC_BASE.val,
-            "serialNumber": wp.serial,
-            "messageType": msg_dict["type"],
+            "messageType": msg_dict["type"]
         })
-        mqtt_client.publish(message_topic, message)
-    if Cfg.MQTT_PUBLISH_PROPERTIES.val and msg_dict["type"] in ["fullStatus", "deltaStatus"]:
-        for prop_name, value in msg_dict["status"].items():
-            pd = wpdef["properties"][prop_name]
-            mqtt_publish_property(wp, mqtt_client, pd, value)
+        mqtt_client.publish(message_topic, payload=message, qos=0, retain=False)
+
+    # Wenn Properties aktualisiert werden:
+    if msg_dict.get("type") == "response" and "status" in msg_dict:
+        status = msg_dict["status"]
+        if isinstance(status, dict):
+            for k, v in status.items():
+                if not Cfg.MQTT_PROPERTIES.val or k in Cfg.MQTT_PROPERTIES.val:
+                    mqtt_publish_property(wp, k, v)
 
 # Substitute topic patterns
 
