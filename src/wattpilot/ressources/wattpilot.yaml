@@ -204,6 +204,18 @@ messages:
 # - https://github.com/syssi/homeassistant-goecharger-mqtt
 # - https://www.fronius.com/~/downloads/Solar%20Energy/Operating%20Instructions/42%2C0426%2C0400%2CEN.pdf
 properties:
+  - key: avgfhz
+    title: Average Grid Frequency
+    description: Average grid frequency in Hertz
+    jsonType: float
+    unit_of_measurement: "Hz"
+    device_class: frequency
+    rw: R
+  - key: tab
+    title: Time Allowed / Tariff Table
+    description: Allowed time slots or tariff information
+    jsonType: string
+    rw: R
   - key: abm
     jsonType: string
     example: <SOME_MAC>
